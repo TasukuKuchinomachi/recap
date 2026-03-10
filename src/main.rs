@@ -2,51 +2,96 @@ mod executor;
 mod mcp;
 mod storage;
 
+use comfy_table::{presets, Attribute, Cell, Color, ContentArrangement, Table};
+use console::{style, Term};
 use storage::Storage;
 
 fn print_usage() {
-    eprintln!("Usage:");
-    eprintln!("  recap <command> [args...]   コマンドを実行し、結果を保存");
-    eprintln!("  recap -l, --last           直前の実行結果を表示");
-    eprintln!("  recap -n <N>               直近N件の一覧を表示");
-    eprintln!("  recap -s, --show <ID>      指定IDの実行結果を表示");
-    eprintln!("  recap --mcp                MCP サーバーとして起動");
+    let term = Term::stderr();
+    let _ = term.write_line(&format!("{}", style("Usage:").bold()));
+    let _ = term.write_line(&format!(
+        "  {} {}   コマンドを実行し、結果を保存",
+        style("recap <command> [args...]").green(),
+        ""
+    ));
+    let _ = term.write_line(&format!(
+        "  {}           直前の実行結果を表示",
+        style("recap -l, --last").green()
+    ));
+    let _ = term.write_line(&format!(
+        "  {}               直近N件の一覧を表示",
+        style("recap -n <N>").green()
+    ));
+    let _ = term.write_line(&format!(
+        "  {}      指定IDの実行結果を表示",
+        style("recap -s, --show <ID>").green()
+    ));
+    let _ = term.write_line(&format!(
+        "  {}                MCP サーバーとして起動",
+        style("recap --mcp").green()
+    ));
 }
 
 fn show_entry_detail(storage: &Storage, entry: &storage::RunEntry) {
-    println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    let exit_style = if entry.exit == 0 {
+        style(format!("exit: {}", entry.exit)).green()
+    } else {
+        style(format!("exit: {}", entry.exit)).red()
+    };
+
     println!(
-        "#{:03} | {} | exit: {}",
-        entry.id, entry.cmd, entry.exit
+        "{} {} {} {}",
+        style(format!("#{:03}", entry.id)).cyan().bold(),
+        style("|").dim(),
+        style(&entry.cmd).bold(),
+        style("|").dim(),
     );
-    println!("{}", entry.at.format("%Y-%m-%d %H:%M:%S"));
-    println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    println!();
+    println!(
+        "{} {}",
+        style(entry.at.format("%Y-%m-%d %H:%M:%S")).dim(),
+        exit_style,
+    );
+    println!("{}", style("─".repeat(50)).dim());
     match storage.read_log(entry.id) {
         Ok(log) => print!("{}", log),
-        Err(e) => eprintln!("[recap] ログの読み込みに失敗: {}", e),
+        Err(e) => eprintln!("{} ログの読み込みに失敗: {}", style("[recap]").red(), e),
     }
 }
 
 fn show_list(storage: &Storage, n: usize) {
     match storage.get_last_n(n) {
-        Ok(entries) => {
-            println!(
-                " {:>3} | {:>4} | {:>19} | COMMAND",
-                "ID", "EXIT", "TIME"
-            );
-            println!("-----+------+---------------------+------------------");
-            for entry in entries.iter().rev() {
-                println!(
-                    " {:03} | {:>4} | {} | {}",
-                    entry.id,
-                    entry.exit,
-                    entry.at.format("%Y-%m-%d %H:%M:%S"),
-                    entry.cmd
-                );
-            }
+        Ok(entries) if entries.is_empty() => {
+            eprintln!("{} 実行履歴がありません", style("[recap]").yellow());
         }
-        Err(e) => eprintln!("[recap] エラー: {}", e),
+        Ok(entries) => {
+            let mut table = Table::new();
+            table
+                .load_preset(presets::UTF8_FULL_CONDENSED)
+                .set_content_arrangement(ContentArrangement::Dynamic)
+                .set_header(vec![
+                    Cell::new("ID").add_attribute(Attribute::Bold),
+                    Cell::new("EXIT").add_attribute(Attribute::Bold),
+                    Cell::new("TIME").add_attribute(Attribute::Bold),
+                    Cell::new("COMMAND").add_attribute(Attribute::Bold),
+                ]);
+
+            for entry in entries.iter().rev() {
+                let exit_cell = if entry.exit == 0 {
+                    Cell::new(entry.exit).fg(Color::Green)
+                } else {
+                    Cell::new(entry.exit).fg(Color::Red)
+                };
+                table.add_row(vec![
+                    Cell::new(format!("{:03}", entry.id)).fg(Color::Cyan),
+                    exit_cell,
+                    Cell::new(entry.at.format("%Y-%m-%d %H:%M:%S").to_string()),
+                    Cell::new(&entry.cmd),
+                ]);
+            }
+
+            println!("{table}");
+        }
+        Err(e) => eprintln!("{} エラー: {}", style("[recap]").red(), e),
     }
 }
 
