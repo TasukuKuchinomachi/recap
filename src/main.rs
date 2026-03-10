@@ -40,16 +40,11 @@ fn show_entry_detail(storage: &Storage, entry: &storage::RunEntry) {
     };
 
     println!(
-        "{} {} {} {}",
+        "{} {} {}  {}",
         style(format!("#{:03}", entry.id)).cyan().bold(),
-        style("|").dim(),
         style(&entry.cmd).bold(),
-        style("|").dim(),
-    );
-    println!(
-        "{} {}",
-        style(entry.at.format("%Y-%m-%d %H:%M:%S")).dim(),
         exit_style,
+        style(entry.at.format("%Y-%m-%d %H:%M:%S")).dim(),
     );
     println!("{}", style("─".repeat(50)).dim());
     match storage.read_log(entry.id) {
@@ -131,6 +126,9 @@ fn main() {
                 Ok(None) => eprintln!("[recap] ID {} の記録が見つかりません", id),
                 Err(e) => eprintln!("[recap] エラー: {}", e),
             }
+        }
+        "-h" | "--help" => {
+            print_usage();
         }
         "--mcp" => {
             if let Err(e) = mcp::run_mcp_server() {
