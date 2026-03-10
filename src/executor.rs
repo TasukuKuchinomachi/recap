@@ -11,8 +11,6 @@ pub fn execute_and_record(command: &[String]) -> std::io::Result<i32> {
     let cmd_str = command.join(" ");
     let id = storage.next_id()?;
 
-    eprintln!("[recap] 実行: {}", cmd_str);
-
     let mut child = Command::new(&command[0])
         .args(&command[1..])
         .stdout(Stdio::piped())
@@ -62,8 +60,6 @@ pub fn execute_and_record(command: &[String]) -> std::io::Result<i32> {
         at: Utc::now(),
     };
     storage.append_entry(&entry)?;
-
-    eprintln!("[recap] 完了 (exit: {}) → #{}", exit_code, id);
 
     Ok(exit_code)
 }
