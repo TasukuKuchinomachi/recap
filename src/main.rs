@@ -29,6 +29,46 @@ fn print_usage() {
         "  {}                MCP サーバーとして起動",
         style("recap --mcp").green()
     ));
+    let _ = term.write_line(&format!(
+        "  {}       シェル統合を初期化 (bash/zsh/fish)",
+        style("recap init <shell>").green()
+    ));
+}
+
+fn print_shell_init(shell: &str) {
+    let recap_bin = std::env::current_exe()
+        .map(|p| p.display().to_string())
+        .unwrap_or_else(|_| "recap".to_string());
+
+    match shell {
+        "bash" | "zsh" => {
+            println!(
+                r#"r() {{
+  local cmd
+  cmd="$*"
+  {bin} --exec "$cmd"
+}}"#,
+                bin = recap_bin
+            );
+        }
+        "fish" => {
+            println!(
+                r#"function r
+  set -l cmd (string join " " $argv)
+  {bin} --exec "$cmd"
+end"#,
+                bin = recap_bin
+            );
+        }
+        _ => {
+            eprintln!(
+                "{} 未対応のシェル: {} (bash, zsh, fish に対応)",
+                style("[recap]").red(),
+                shell
+            );
+            std::process::exit(1);
+        }
+    }
 }
 
 fn show_entry_detail(storage: &Storage, entry: &storage::RunEntry) {
@@ -128,6 +168,21 @@ fn main() {
         }
         "-h" | "--help" => {
             print_usage();
+        }
+        "init" => {
+            let shell = args.get(1).map(|s| s.as_str()).unwrap_or("bash");
+            print_shell_init(shell);
+        }
+        "--exec" => {
+            let cmd = args[1..].join(" ");
+            let exit_code = match executor::execute_and_record(&[cmd]) {
+                Ok(code) => code,
+                Err(e) => {
+                    eprintln!("[recap] 実行エラー: {}", e);
+                    1
+                }
+            };
+            std::process::exit(exit_code);
         }
         "--mcp" => {
             if let Err(e) = mcp::run_mcp_server() {
