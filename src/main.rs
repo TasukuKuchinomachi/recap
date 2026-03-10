@@ -41,9 +41,20 @@ fn print_shell_init(shell: &str) {
         .unwrap_or_else(|_| "recap".to_string());
 
     match shell {
-        "bash" | "zsh" => {
+        "bash" => {
             println!(
-                r#"r() {{
+                r#"rec() {{
+  local cmd
+  cmd="$*"
+  {bin} --exec "$cmd"
+}}"#,
+                bin = recap_bin
+            );
+        }
+        "zsh" => {
+            println!(
+                r#"disable -r r 2>/dev/null
+rec() {{
   local cmd
   cmd="$*"
   {bin} --exec "$cmd"
@@ -53,7 +64,7 @@ fn print_shell_init(shell: &str) {
         }
         "fish" => {
             println!(
-                r#"function r
+                r#"function rec
   set -l cmd (string join " " $argv)
   {bin} --exec "$cmd"
 end"#,
