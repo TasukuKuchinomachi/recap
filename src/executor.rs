@@ -11,8 +11,9 @@ pub fn execute_and_record(command: &[String]) -> std::io::Result<i32> {
     let cmd_str = command.join(" ");
     let id = storage.next_id()?;
 
-    let mut child = Command::new(&command[0])
-        .args(&command[1..])
+    let mut child = Command::new("sh")
+        .arg("-c")
+        .arg(&cmd_str)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()?;

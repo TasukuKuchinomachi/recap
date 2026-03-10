@@ -10,9 +10,8 @@ fn print_usage() {
     let term = Term::stderr();
     let _ = term.write_line(&format!("{}", style("Usage:").bold()));
     let _ = term.write_line(&format!(
-        "  {} {}   コマンドを実行し、結果を保存",
-        style("recap <command> [args...]").green(),
-        ""
+        "  {}   コマンドを実行し、結果を保存 (パイプ可)",
+        style("recap <command...>").green()
     ));
     let _ = term.write_line(&format!(
         "  {}           直前の実行結果を表示",
